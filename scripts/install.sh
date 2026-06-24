@@ -46,7 +46,9 @@ UV="$(ensure_uv)"
 declare -a PIP
 if [ -n "$UV" ] && "$UV" venv --python 3.11 "$VENV" 2>/dev/null; then
   log "uv venv 생성 (python 3.11) — $UV"
-  PIP=( "$UV" pip install --python "$PY_BIN" )
+  # unsafe-best-match: flashinfer 등은 PyPI, torch 는 cu128 인덱스 — uv가 여러 인덱스에서
+  # 최적 버전을 찾도록(기본 first-index 면 cu128 에서 flashinfer 버전 못 찾고 실패).
+  PIP=( "$UV" pip install --python "$PY_BIN" --index-strategy unsafe-best-match )
 else
   [ -n "$UV" ] && warn "uv venv 실패 → python -m venv 폴백" || warn "uv 없음 → python -m venv 폴백"
   PYEXE="$(command -v python3.11 || true)"; [ -n "$PYEXE" ] || PYEXE="$(command -v python3)"
