@@ -1,0 +1,7 @@
+.venv/
+.cache/
+results/*.json
+results/*.log
+__pycache__/
+*.pyc
+.DS_Store
