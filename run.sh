@@ -32,6 +32,7 @@ MAX_NUM_SEQS="${MAX_NUM_SEQS:-16}"
 # prefill 한 배치에 full-context 가 들어가도록 기본을 max-model-len 과 동일하게.
 MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-$MAX_MODEL_LEN}"
 ENFORCE_EAGER="${ENFORCE_EAGER:-1}"
+KV_DTYPE="${KV_DTYPE:-}"   # 빈값=auto(bf16). Hopper/Blackwell 에선 fp8 가능(--kv-cache-dtype fp8)
 OUTPUT_LEN="${OUTPUT_LEN:-256}"
 CONCURRENCY="${CONCURRENCY:-1,2,4}"
 INPUT_LEN="${INPUT_LEN:-$(( MAX_MODEL_LEN - OUTPUT_LEN - 128 ))}"
@@ -141,8 +142,10 @@ run_one(){
 
   local -a eager=()
   [ "$ENFORCE_EAGER" = "1" ] && eager=(--enforce-eager)
+  local -a kvd=()
+  [ -n "$KV_DTYPE" ] && kvd=(--kv-cache-dtype "$KV_DTYPE")
 
-  log "vLLM 서버 기동 (GPU $GPU, port $PORT, max-model-len $MAX_MODEL_LEN, util $GPU_UTIL, batched $MAX_NUM_BATCHED_TOKENS, eager=$ENFORCE_EAGER)"
+  log "vLLM 서버 기동 (GPU $GPU, port $PORT, max-model-len $MAX_MODEL_LEN, util $GPU_UTIL, batched $MAX_NUM_BATCHED_TOKENS, eager=$ENFORCE_EAGER, kv=${KV_DTYPE:-auto})"
   log "  서버 로그: $slog"
   # setsid → 자식(EngineCore 등)까지 한 프로세스 그룹 → cleanup 에서 그룹 전체 정리
   CUDA_VISIBLE_DEVICES="$GPU" setsid "$PYBIN" -m vllm.entrypoints.openai.api_server \
@@ -153,7 +156,7 @@ run_one(){
     --max-num-seqs "$MAX_NUM_SEQS" \
     --max-num-batched-tokens "$MAX_NUM_BATCHED_TOKENS" \
     --dtype auto --trust-remote-code \
-    "${eager[@]}" "${MODEL_EXTRA_ARGS[@]}" \
+    "${eager[@]}" "${kvd[@]}" "${MODEL_EXTRA_ARGS[@]}" \
     --api-key "$API_KEY" \
     >"$slog" 2>&1 &
   SERVER_PID=$!
