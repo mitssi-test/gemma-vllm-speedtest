@@ -2,6 +2,9 @@
 .cache/
 results/*.json
 results/*.log
+# gpu-bench: 도구(build.py)만 공유, 생성 결과/데이터는 로컬 전용(푸시 안 함)
+gpu-bench/index.html
+gpu-bench/data/*.json
 __pycache__/
 *.pyc
 .DS_Store

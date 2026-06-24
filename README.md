@@ -97,11 +97,26 @@ ENFORCE_EAGER=0 bash run.sh 26b
 ```
 run.sh                # 엔트리포인트: 설치→서버→health→벤치→종료
 scripts/install.sh    # vLLM 0.20.2 환경(.venv) — 프로덕션과 동일 핀
-bench/benchmark.py    # async 벤치 클라이언트(스트리밍, 토큰ID 프롬프트)
+bench/benchmark.py    # async 벤치 클라이언트(스트리밍, 토큰ID 프롬프트), 결과에 GPU 메타 기록
+bench/compare.py      # 여러 GPU 결과 JSON → CLI 비교 표 + 가성비 리더보드
+gpu-bench/build.py    # 결과 JSON → 예쁜 웹 페이지(index.html) 생성
+gpu-bench/index.html  # 생성된 웹 리포트(GitHub Pages 로 공개 가능)
 configs/26b.env       # 26B 모델 정의
 configs/31b.env       # 31B 모델 정의(게이트)
 results/              # 산출물(JSON/서버로그) — git 미추적
 ```
+
+## GPU 비교 / 웹 리포트
+
+여러 GPU에서 같은 벤치를 돌려 비교하려면, 각 박스에서 **가격까지 기록**해서 돌리고:
+```bash
+GPU_PRICE_USD_HR=0.836 ./run.sh both     # GPU 이름·VRAM·드라이버·가격이 결과 JSON에 박힘
+```
+- **CLI 비교**: `python bench/compare.py results/*.json` → GPU×동시성 표 + decode/가성비 리더보드
+- **웹 리포트**: 결과 JSON을 `gpu-bench/data/` 에 모으고 `python gpu-bench/build.py` → `gpu-bench/index.html`
+  (생성 결과·데이터(`index.html`/`data/*.json`)는 `.gitignore` — **로컬 전용 뷰**, 푸시 안 됨)
+
+자세한 흐름은 [gpu-bench/README.md](gpu-bench/README.md).
 
 ---
 

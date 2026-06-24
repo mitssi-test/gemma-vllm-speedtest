@@ -25,6 +25,43 @@ import time
 import aiohttp
 
 
+def gather_env(price_usd_hr=None):
+    """벤치 박스 환경 메타(특히 GPU) 수집 — GPU 간 비교에 필수."""
+    env = {}
+    try:
+        from importlib.metadata import version, PackageNotFoundError
+        for pkg in ("vllm", "torch", "transformers", "flashinfer-python"):
+            try:
+                env[pkg] = version(pkg)
+            except PackageNotFoundError:
+                pass
+    except Exception:
+        pass
+    try:
+        import subprocess
+        out = subprocess.run(
+            ["nvidia-smi", "--query-gpu=name,memory.total,driver_version", "--format=csv,noheader"],
+            capture_output=True, text=True, timeout=10).stdout.strip().splitlines()
+        gpus = [ln.strip() for ln in out if ln.strip()]
+        if gpus:
+            parts = [p.strip() for p in gpus[0].split(",")]
+            env["gpu_name"] = parts[0] if parts else None
+            if len(parts) > 1:
+                env["gpu_mem"] = parts[1]
+            if len(parts) > 2:
+                env["driver"] = parts[2]
+            env["gpu_count"] = len(gpus)
+    except Exception:
+        pass
+    env["python"] = "%d.%d.%d" % sys.version_info[:3]
+    if price_usd_hr:
+        try:
+            env["price_usd_hr"] = float(price_usd_hr)
+        except (TypeError, ValueError):
+            pass
+    return env
+
+
 def pct(xs, p):
     if not xs:
         return None
@@ -189,11 +226,19 @@ async def main():
     ap.add_argument("--vocab-hi", type=int, default=50000)
     ap.add_argument("--label", default="")
     ap.add_argument("--output", default="", help="결과 JSON 저장 경로")
+    ap.add_argument("--price-usd-hr", default=os.environ.get("GPU_PRICE_USD_HR", ""),
+                    help="시간당 GPU 가격(USD) — 비교 시 tok/$ 계산용(선택)")
     args = ap.parse_args()
 
     headers = {"Authorization": f"Bearer {args.api_key}", "Content-Type": "application/json"}
     levels = [int(x) for x in str(args.concurrency).split(",") if x.strip()]
     label = args.label or args.model
+
+    env = gather_env(args.price_usd_hr)
+    if env.get("gpu_name"):
+        print(f"[bench] GPU: {env.get('gpu_name')} x{env.get('gpu_count', 1)} "
+              f"({env.get('gpu_mem', '?')}) | vllm {env.get('vllm', '?')} torch {env.get('torch', '?')}",
+              flush=True)
 
     rows = []
     for c in levels:
@@ -223,6 +268,8 @@ async def main():
         "base_url": args.base_url,
         "input_len": args.input_len,
         "output_len": args.output_len,
+        "enforce_eager": os.environ.get("ENFORCE_EAGER", ""),
+        "env": env,
         "results": rows,
     }
     if args.output:

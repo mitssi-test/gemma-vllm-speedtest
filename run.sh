@@ -124,8 +124,12 @@ run_one(){
   [ -n "$SERVED_NAME" ] || die "$cfg 에 SERVED_NAME 미정의"
 
   local ts; ts="$(date +%Y%m%d_%H%M%S)"
-  local slog="$ROOT/results/server_${SERVED_NAME}_${ts}.log"
-  local rjson="$ROOT/results/${SERVED_NAME}_${ts}.json"
+  # GPU 이름을 파일명에 박아 여러 박스 결과를 한 폴더에 모아도 구분되게.
+  local gpuslug
+  gpuslug="$(nvidia-smi --query-gpu=name --format=csv,noheader -i "$GPU" 2>/dev/null | head -1 | tr -cs 'A-Za-z0-9' '-' | sed 's/^-//;s/-$//')"
+  [ -n "$gpuslug" ] || gpuslug="gpu"
+  local slog="$ROOT/results/server_${SERVED_NAME}__${gpuslug}__${ts}.log"
+  local rjson="$ROOT/results/${SERVED_NAME}__${gpuslug}__${ts}.json"
 
   log "================= $SERVED_NAME ($MODEL) ================="
   if [[ "$MODEL" == google/* ]] && [ -z "${HF_TOKEN:-}" ]; then
