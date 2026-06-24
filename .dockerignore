@@ -1,0 +1,10 @@
+.venv/
+.git/
+.cache/
+results/*.json
+results/*.log
+gpu-bench/index.html
+gpu-bench/data/*.json
+__pycache__/
+*.pyc
+.DS_Store
