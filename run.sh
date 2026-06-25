@@ -129,8 +129,8 @@ run_one(){
   local gpuslug
   gpuslug="$(nvidia-smi --query-gpu=name --format=csv,noheader -i "$GPU" 2>/dev/null | head -1 | tr -cs 'A-Za-z0-9' '-' | sed 's/^-//;s/-$//')"
   [ -n "$gpuslug" ] || gpuslug="gpu"
-  local slog="$ROOT/results/server_${SERVED_NAME}__${gpuslug}__${ts}.log"
-  local rjson="$ROOT/results/${SERVED_NAME}__${gpuslug}__${ts}.json"
+  local slog="$ROOT/results/server_${SERVED_NAME}__${gpuslug}__eager${ENFORCE_EAGER}__${ts}.log"
+  local rjson="$ROOT/results/${SERVED_NAME}__${gpuslug}__eager${ENFORCE_EAGER}__${ts}.json"
 
   log "================= $SERVED_NAME ($MODEL) ================="
   if [[ "$MODEL" == google/* ]] && [ -z "${HF_TOKEN:-}" ]; then
@@ -200,10 +200,21 @@ case "$TARGET" in
   *) die "알 수 없는 대상 '$TARGET' (26b|31b|both)" ;;
 esac
 
-log "대상: $TARGET | input_len=$INPUT_LEN output_len=$OUTPUT_LEN concurrency=$CONCURRENCY | HF_HOME=$HF_HOME"
+# ENFORCE_EAGER=both → eager(1) + cudagraph(0) 둘 다 자동 측정(서버 플래그라 각각 재기동)
+declare -a EAGER_VALUES
+case "$ENFORCE_EAGER" in
+  both|BOTH) EAGER_VALUES=(1 0) ;;
+  *)         EAGER_VALUES=("$ENFORCE_EAGER") ;;
+esac
+
+log "대상: $TARGET | input_len=$INPUT_LEN output_len=$OUTPUT_LEN concurrency=$CONCURRENCY | eager=$ENFORCE_EAGER | HF_HOME=$HF_HOME"
 FAIL=0
-for c in "${CFGS[@]}"; do
-  run_one "$c" || { warn "$(basename "$c") 실패"; FAIL=1; }
+for ev in "${EAGER_VALUES[@]}"; do
+  ENFORCE_EAGER="$ev"
+  [ "${#EAGER_VALUES[@]}" -gt 1 ] && log "########## ENFORCE_EAGER=$ev ##########"
+  for c in "${CFGS[@]}"; do
+    run_one "$c" || { warn "$(basename "$c") (eager=$ev) 실패"; FAIL=1; }
+  done
 done
 
 # ---- 3) 이번 실행 결과만 요약 ---------------------------------------------

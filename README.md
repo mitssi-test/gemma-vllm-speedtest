@@ -72,7 +72,7 @@ bash run.sh both                # 26b → 31b 순서로 측정 (기본값)
 | `GPU_UTIL` | `0.90` | `--gpu-memory-utilization` |
 | `MAX_NUM_SEQS` | `16` | 동시 시퀀스 상한 |
 | `MAX_NUM_BATCHED_TOKENS` | `=MAX_MODEL_LEN` | prefill 배치 토큰 예산(기본=컨텍스트 → full prompt 가 한 배치에) |
-| `ENFORCE_EAGER` | `1` | **1=프로덕션과 동일(CUDA graph off)**. `0` 으로 주면 보통 decode 더 빠름 → 비교용 |
+| `ENFORCE_EAGER` | `1` | 1=eager(프로덕션 동일), 0=cudagraph(보통 빠름, MoE 특히). **`both`=둘 다 한 번에 측정** |
 | `KV_DTYPE` | (auto) | `fp8` 주면 KV 8bit(메모리 ~절반). **Hopper/Blackwell(H100·RTX PRO 6000)만** — Ampere(A100)는 거부 |
 | `GPU` | `0` | 사용할 GPU 인덱스 |
 | `PORT` | `8000` | vLLM 포트(127.0.0.1) |

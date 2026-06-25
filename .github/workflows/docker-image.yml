@@ -10,6 +10,9 @@ on:
     paths:
       - 'Dockerfile'
       - 'scripts/install.sh'
+      - 'run.sh'
+      - 'bench/benchmark.py'
+      - 'configs/**'
       - '.github/workflows/docker-image.yml'
 
 permissions:
